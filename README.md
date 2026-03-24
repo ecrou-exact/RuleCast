@@ -5,3 +5,7 @@
 A versatile security rule parser and normalizer designed to convert multi-format detection signatures (such as YARA, Suricata, and Emerging Threats) into structured JSON. Whether via file upload or direct copy-paste, it streamlines the translation of complex security logic into a machine-readable format for seamless integration and automation.
 
 An extension utility built to complement and enhance the [rulezet-core](https://github.com/ngsoti/rulezet-core.git) framework
+
+use source venv/bin/activate for python env
+
+for use python3 main.py -t 'rule MyTest { condition: true }'
