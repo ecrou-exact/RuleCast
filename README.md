@@ -1,5 +1,3 @@
-# RULECAST
-
 <p align="center">
   <img src="https://raw.githubusercontent.com/ecrou-exact/RuleCast/main/doc/logo.png" width="300" alt="Rulecast logo">
 </p>
