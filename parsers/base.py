@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+
 @dataclass
 class ValidationResult:
     """Standardized response for rule validation."""
@@ -11,62 +12,58 @@ class ValidationResult:
     warnings: List[str] = field(default_factory=list)
     normalized_content: Optional[str] = None
 
+
 class BaseRuleParser(ABC):
     """
-    Interface for all security rule formats.
-    Designed to be stateless and modular for Rulezet/RuleCast.
+    Abstract contract for all security rule format parsers.
+    Stateless and modular — no file I/O inside parsers.
     """
 
     @property
     @abstractmethod
     def format(self) -> str:
-        """Short identifier (e.g., 'yara', 'suricata')."""
-        pass
+        """Short identifier: 'yara', 'sigma', 'suricata', etc."""
 
     @property
     @abstractmethod
     def extensions(self) -> List[str]:
-        """List of supported file extensions (e.g., ['.yar', '.yara'])."""
-        pass
+        """Supported file extensions: ['.yar', '.yara']"""
 
     @abstractmethod
     def can_handle(self, chunk: str) -> bool:
-        """
-        Quickly check if a text snippet or file content belongs to this format.
-        Useful for 'auto-detect' when the user pastes raw text.
-        """
-        pass
+        """Return True if this raw text looks like this format (auto-detect)."""
 
     @abstractmethod
     def split_rules(self, raw_content: str) -> List[str]:
-        """
-        The 'Segmenter': Takes a multi-rule file/string and 
-        returns a list of individual raw rule strings.
-        """
-        pass
+        """Split a multi-rule string into individual raw rule strings."""
 
     @abstractmethod
     def validate(self, raw_rule: str) -> ValidationResult:
-        """
-        Checks syntax and semantic logic. 
-        Crucial before importing into Rulezet.
-        """
-        pass
+        """Validate syntax and semantics. Returns ValidationResult."""
 
     @abstractmethod
     def parse(self, raw_rule: str) -> Dict[str, Any]:
         """
-        The 'Heavy Lifter': Transforms raw text into a structured dictionary.
-        Should include: 'identity', 'metadata', 'logic', and 'tags'.
+        Parse raw rule into a structured dict:
+        {
+            "format": str,
+            "identity": {"name": str, "tags": [...], "scopes": [...]},
+            "metadata": {...},
+            "content": str,
+            "tags": [...],
+            "vulnerabilities": [...],  # CVE IDs
+            "references": [...],
+            "sources": [...],          # authors
+            "original_uuid": str | None
+        }
         """
-        pass
 
     def normalize(self, parsed_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Maps format-specific keys to the Universal Rulezet Schema.
-        Default implementation returns data as-is.
+        Map parsed dict to the Universal Rulezet Schema.
+        Override in each parser. Default is pass-through.
         """
         return parsed_data
 
-    def __repr__(self):
-        return f"<{self.__class__.__name__} format='{self.format_id}'>"
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} format='{self.format}'>"
