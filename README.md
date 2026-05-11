@@ -58,14 +58,31 @@ python3 main.py detect -t 'rule MyTest { condition: true }'
 # Output as JSON
 python3 main.py parse -i rules.yar --json
 
+# Launch the interactive test runner
+python3 main.py test
+
 # Scaffold a new parser
 python3 main.py new sigma
 ```
 
+## Test runner
+
+RuleCast includes an interactive test runner to validate parsers against rule fixtures:
+
+```bash
+python3 main.py test
+```
+
+It lets you choose a format, load a test file or paste content, then shows per-rule results and a summary that checks found counts against the expected counts declared in the test file header.
+
 ## Adding a new format
+
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the full guide: how the pipeline works, what methods to implement, how to write test fixtures, and how to open a pull request.
+
+Quick start:
 
 ```bash
 python3 main.py new <format_name>
 ```
 
-This generates a ready-to-fill template at `parsers/formats/<format_name>_parser.py`. Implement the methods, then add the parser to `parsers/__init__.py`.
+This generates a ready-to-fill template at `parsers/formats/<format_name>_parser.py`. Implement the methods, add the parser to `parsers/__init__.py`, add a test fixture, and you're done.

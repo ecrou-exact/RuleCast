@@ -15,11 +15,20 @@ def insert_import_module(rule_text, module_name):
 
 class YaraParser(BaseRuleParser):
     """
-    Robust YARA Parser using Regex-Splitting to isolate rules.
-    This prevents a single syntax error from crashing the entire file processing.
+    Robust YARA Parser using regex-based splitting to isolate rules.
+    Resilient to mixed valid/invalid rules in large files.
     """
 
     YARA_MODULES = {"pe", "math", "cuckoo", "magic", "hash", "dotnet", "elf", "macho", "vt"}
+
+    # Matches rule headers including:
+    # - optional global / private modifiers (any order, any combination)
+    # - rule name
+    # - optional tag list ": tag1 tag2 ..."  (one OR multiple tags)
+    # - opening brace
+    SPLIT_PATTERN = re.compile(
+        r'(?:global\s+|private\s+)*rule\s+[\w\d_]+\s*(?::\s*(?:[\w\d_]+\s*)+)?\{'
+    )
 
     def __init__(self):
         self.ply = plyara.Plyara()
@@ -33,8 +42,7 @@ class YaraParser(BaseRuleParser):
         return [".yar", ".yara"]
 
     def can_handle(self, chunk: str) -> bool:
-        pattern = r'(?:global\s+|private\s+)?rule\s+[\w\d_]+\s*(?::\s*[\w\d_]+\s*)?\{'
-        return bool(re.search(pattern, chunk))
+        return bool(self.SPLIT_PATTERN.search(chunk))
 
     def validate(self, content: str, **kwargs) -> ValidationResult:
         externals = {}
@@ -67,15 +75,18 @@ class YaraParser(BaseRuleParser):
 
     def split_rules(self, raw_content: str) -> List[str]:
         """
-        Regex-based splitting — isolates each rule block by finding 'rule' keywords.
-        Resilient to mixed valid/invalid rules in large files.
+        Regex-based splitting — finds each rule header and slices content between them.
+
+        Fixed vs original:
+        - Handles multiple tags: "rule Foo : tag1 tag2 tag3 {"
+        - Handles modifiers in any order: "global private rule Foo {"
+        - Original pattern only matched a single tag and missed multi-tag rules
         """
-        pattern = r'((?:global\s+|private\s+)?rule\s+[\w\d_]+\s*(?::\s*[\w\d_]+\s*)?\{)'
-        matches = list(re.finditer(pattern, raw_content))
+        matches = list(self.SPLIT_PATTERN.finditer(raw_content))
 
         rules = []
-        for i in range(len(matches)):
-            start = matches[i].start()
+        for i, match in enumerate(matches):
+            start = match.start()
             end = matches[i + 1].start() if i + 1 < len(matches) else len(raw_content)
             rule_chunk = raw_content[start:end].strip()
             if rule_chunk:
@@ -111,7 +122,6 @@ class YaraParser(BaseRuleParser):
                 "status": "parsed",
             }
         except Exception as e:
-            # Fallback: regex extraction when plyara fails on a specific rule
             name_match = re.search(r'rule\s+(\w+)', raw_rule)
             return {
                 "format": self.format,

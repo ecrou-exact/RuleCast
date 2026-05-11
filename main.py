@@ -14,6 +14,7 @@ Commands:
   detect  -i <file>                  Detect format of a file
   list                               List all registered parsers
   new     <format>                   Scaffold a new parser
+  test                               Launch the interactive test runner
 """
 
 import argparse
@@ -59,14 +60,14 @@ BANNER = f"""
 # ── engine (lazy import so errors surface cleanly) ────────────────────────────
 
 def get_engine():
-    from rulecast.engine import RuleCastEngine
+    from parsers.engine import RuleCastEngine
     return RuleCastEngine()
 
 # ── output helpers ────────────────────────────────────────────────────────────
 
 def _print_validation(result, label: str = ""):
     """result can be a ValidationResult or a ParseResult."""
-    from rulecast.base import ValidationResult as VR
+    from parsers.base import ValidationResult as VR
     v = result if isinstance(result, VR) else result.validation
     tag = f" {c(label, DIM)}" if label else ""
     if v.ok:
@@ -242,6 +243,19 @@ def cmd_new(args):
     from utils.scaffold import create_parser_template
     create_parser_template(fmt)
 
+
+def cmd_test(_args):
+    """Launch the interactive test runner (test_runner.py) in the same process."""
+    runner_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tests", "test_runner.py")
+    if not os.path.exists(runner_path):
+        err(f"test_runner.py not found at: {runner_path}")
+        return
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("test_runner", runner_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.main()
+
 # ── interactive menu ──────────────────────────────────────────────────────────
 
 MENU_ITEMS = [
@@ -250,6 +264,7 @@ MENU_ITEMS = [
     ("detect",   "Auto-detect rule format"),
     ("list",     "List all registered parsers"),
     ("new",      "Scaffold a new parser"),
+    ("test",     "Launch the interactive test runner"),
     ("quit",     "Exit"),
 ]
 
@@ -400,6 +415,8 @@ def run_interactive():
             cmd_list(None)
         elif choice == "new":
             _interactive_new()
+        elif choice == "test":
+            cmd_test(None)
         else:
             err(f"Unknown command: '{choice}'")
 
@@ -419,6 +436,7 @@ def build_parser() -> argparse.ArgumentParser:
               python3 main.py detect -t 'alert tcp ...'
               python3 main.py list
               python3 main.py new sigma
+              python3 main.py test
         """),
     )
     sub = p.add_subparsers(dest="command")
@@ -452,6 +470,9 @@ def build_parser() -> argparse.ArgumentParser:
     sn = sub.add_parser("new", help="Scaffold a new parser")
     sn.add_argument("format_name", help="Format name (e.g. sigma)")
 
+    # test
+    sub.add_parser("test", help="Launch the interactive test runner")
+
     return p
 
 
@@ -462,6 +483,7 @@ DISPATCH = {
     "detect":   cmd_detect,
     "list":     cmd_list,
     "new":      cmd_new,
+    "test":     cmd_test,
 }
 
 # ── entry point ───────────────────────────────────────────────────────────────
